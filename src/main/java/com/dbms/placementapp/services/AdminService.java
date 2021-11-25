@@ -48,7 +48,7 @@ public class AdminService {
                 return response;
             }
             student.setPStatus(Constants.PLACEMENT_STATUS.REGISTERED);
-            student.setMessage("Registered for the placement drive successfully , can appl for role");
+            student.setMessage("Registered for the placement drive successfully , can apply for role");
             student = studentRepo.save(student);
             message = "Student registration successfull";
             status = Constants.RESPONSE_STATUS.SUCCESS;
@@ -139,6 +139,15 @@ public class AdminService {
                 response.setStatus(status);
                 return response;
             }
+            List<AppliedFor> appliedFors = appliedForRepo
+                    .findByRecruiterIdAndStudentId(recruiterCollection.get(0).getRecruiterId(), studentId);
+            if (appliedFors != null && appliedFors.isEmpty()) {
+                message = "Student have not applied for this role";
+                status = Constants.RESPONSE_STATUS.FAILED;
+                response.setMessage(message);
+                response.setStatus(status);
+                return response;
+            }
             Recruiter recruiter = recruiterCollection.get(0);
             List<AppliedFor> list = appliedForRepo.deleteByStudentId(studentId);
             IsPlaced isPlaced = IsPlaced.builder().recruiterId(recruiter.getRecruiterId()).studentId(studentId).build();
@@ -161,6 +170,37 @@ public class AdminService {
             return response;
         }
 
+    }
+
+    public Acknowledgement revertRejection(UpdateStatusPayload payload, Integer studentId) {
+        String status = null;
+        String message = null;
+        Acknowledgement response = Acknowledgement.builder().build();
+        try {
+            List<Student> studentCollection = studentRepo.findByStudentId(studentId);
+            Student student = studentCollection.get(0);
+            if (!student.getPStatus().equals(Constants.PLACEMENT_STATUS.REJECTED)) {
+                message = "Student have not rejected . status : " + student.getPStatus();
+                status = Constants.RESPONSE_STATUS.FAILED;
+                response.setMessage(message);
+                response.setStatus(status);
+                return response;
+            }
+            student.setPStatus(Constants.PLACEMENT_STATUS.NOT_REGISTERED);
+            student.setMessage("Please apply for the placement drive to participate in it");
+            student = studentRepo.save(student);
+            message = "Student rejection revoked";
+            status = Constants.RESPONSE_STATUS.SUCCESS;
+            response.setMessage(message);
+            response.setStatus(status);
+            return response;
+        } catch (Exception e) {
+            message = "Student status chaage failed, " + e.getMessage();
+            status = Constants.RESPONSE_STATUS.FAILED;
+            response.setMessage(message);
+            response.setStatus(status);
+            return response;
+        }
     }
 
 }

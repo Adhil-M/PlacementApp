@@ -211,6 +211,9 @@ public class AdminController {
         case Constants.PLACEMENT_STATUS.PLACED:
             response = adminService.placeStudent(payload, studentId);
             break;
+        case Constants.PLACEMENT_STATUS.NOT_REGISTERED:
+            response = adminService.revertRejection(payload, studentId);
+            break;
         default:
             message = "status vale not valid";
             status = Constants.RESPONSE_STATUS.FAILED;
