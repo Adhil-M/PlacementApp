@@ -12,4 +12,7 @@ public interface StudentRepository extends JpaRepository<Student, Integer> {
     List<Student> findByRegNo(String regNo);
 
     List<Student> findByStudentId(Integer studentId);
+
+    List<Student> findBypStatus(String pStatus);
+
 }

@@ -1,5 +1,6 @@
 package com.dbms.placementapp.controllers;
 
+import java.rmi.UnexpectedException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -13,6 +14,7 @@ import com.dbms.placementapp.models.User;
 import com.dbms.placementapp.models.UserCreds;
 import com.dbms.placementapp.models.payloads.UpdateStatusPayload;
 import com.dbms.placementapp.models.responses.Acknowledgement;
+import com.dbms.placementapp.models.responses.ApplicationsList;
 import com.dbms.placementapp.models.responses.RecruiterResponse;
 import com.dbms.placementapp.models.responses.StudentDetail;
 import com.dbms.placementapp.models.responses.StudentList;
@@ -241,12 +243,27 @@ public class AdminController {
     }
 
     @GetMapping(value = "/fetchstudents")
-    public ResponseEntity<StudentList> getMethodName(@RequestParam(name = "regNo", required = false) String regNo) {
+    public ResponseEntity<StudentList> getMethodName(@RequestParam(name = "regNo", required = false) String regNo,
+            @RequestParam(name = "status", required = false) String filterStatus) {
         try {
+            if (filterStatus != null && !filterStatus.equalsIgnoreCase("")) {
+                filterStatus.toLowerCase();
+                if (!filterStatus.equals(Constants.PLACEMENT_STATUS.NOT_REGISTERED)
+                        && !filterStatus.equals(Constants.PLACEMENT_STATUS.REGISTERED)
+                        && !filterStatus.equals(Constants.PLACEMENT_STATUS.APPLIED)
+                        && !filterStatus.equals(Constants.PLACEMENT_STATUS.REJECTED)
+                        && !filterStatus.equals(Constants.PLACEMENT_STATUS.PLACED)) {
+                    StudentList response = null;
+                    return new ResponseEntity<StudentList>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+                }
+            }
             List<Student> list = null;
             StudentList response = StudentList.builder().build();
-            if (regNo == null || regNo.trim().equals("")) {
+            if ((regNo == null || regNo.trim().equals(""))
+                    && (filterStatus == null || filterStatus.equalsIgnoreCase(""))) {
                 list = studentRepo.findAll();
+            } else if (regNo == null || regNo.trim().equals("")) {
+                list = studentRepo.findBypStatus(filterStatus);
             } else {
                 list = studentRepo.findByRegNo(regNo);
             }
@@ -277,6 +294,70 @@ public class AdminController {
     }
 
     // todo:get applications by name,role,regno
+    @GetMapping(path = "/applications")
+    public ResponseEntity<ApplicationsList> getApplications(
+            @RequestParam(name = "regNo", required = false) String regNo,
+            @RequestParam(name = "recruiterName", required = false) String recruiterName,
+            @RequestParam(name = "role", required = false) String role) {
+        List<AppliedFor> list = new ArrayList<AppliedFor>();
+        try {
+            if (regNo != null && !regNo.trim().equals("")) {
+                List<Student> students = studentRepo.findByRegNo(regNo);
+                if (students != null && !students.isEmpty()) {
+                    Integer studentId = students.get(0).getStudentId();
+                    if ((recruiterName == null || recruiterName.equals("")) && (role == null || role.equals(""))) {
+                        list = appliedForRepo.findByStudentId(studentId);
+                    } else if (role == null || role.equals("")) {
+                        List<Recruiter> recruiters = recruiterRepo.findByName(recruiterName);
+                        for (Recruiter recruiter : recruiters) {
+                            list.addAll(appliedForRepo.findByRecruiterIdAndStudentId(recruiter.getRecruiterId(),
+                                    studentId));
+                        }
+                    } else if (recruiterName == null || recruiterName.equals("")) {
+                        List<Recruiter> recruiters = recruiterRepo.findByRole(role);
+                        for (Recruiter recruiter : recruiters) {
+                            list.addAll(appliedForRepo.findByRecruiterIdAndStudentId(recruiter.getRecruiterId(),
+                                    studentId));
+                        }
+                    } else {
+                        List<Recruiter> recruiters = recruiterRepo.findByNameAndRole(recruiterName, role);
+                        for (Recruiter recruiter : recruiters) {
+                            list.addAll(appliedForRepo.findByRecruiterIdAndStudentId(recruiter.getRecruiterId(),
+                                    studentId));
+                        }
+                    }
+                }
+            } else {
+                if ((recruiterName == null || recruiterName.equals("")) && (role == null || role.equals(""))) {
+                    list = appliedForRepo.findAll();
+                } else if (role == null || role.equals("")) {
+                    List<Recruiter> recruiters = recruiterRepo.findByName(recruiterName);
+                    for (Recruiter recruiter : recruiters) {
+                        list.addAll(appliedForRepo.findByRecruiterId(recruiter.getRecruiterId()));
+                    }
+                } else if (recruiterName == null || recruiterName.equals("")) {
+                    List<Recruiter> recruiters = recruiterRepo.findByRole(role);
+                    for (Recruiter recruiter : recruiters) {
+                        list.addAll(appliedForRepo.findByRecruiterId(recruiter.getRecruiterId()));
+                    }
+                } else {
+                    List<Recruiter> recruiters = recruiterRepo.findByNameAndRole(recruiterName, role);
+                    for (Recruiter recruiter : recruiters) {
+                        list.addAll(appliedForRepo.findByRecruiterId(recruiter.getRecruiterId()));
+                    }
+                }
+            }
+            ApplicationsList response = ApplicationsList.builder().applications(list).applicationsCount(list.size())
+                    .build();
+            return new ResponseEntity<ApplicationsList>(response, HttpStatus.OK);
+
+        } catch (Exception e) {
+            ApplicationsList response = null;
+            return new ResponseEntity<ApplicationsList>(response, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+
+    }
+
     @PostMapping(path = "/applicationstatus")
     public ResponseEntity<Acknowledgement> updateApplicationStatus(@RequestParam("applicationId") Integer applicationId,
             @RequestBody Acknowledgement payload) {
