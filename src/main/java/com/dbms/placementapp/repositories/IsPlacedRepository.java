@@ -12,4 +12,7 @@ public interface IsPlacedRepository extends JpaRepository<IsPlaced, Integer> {
     List<IsPlaced> findByStudentId(Integer studentId);
 
     List<IsPlaced> findByRecruiterId(Integer recruiterId);
+
+    List<IsPlaced> deleteByRecruiterId(Integer recruiterId);
+
 }

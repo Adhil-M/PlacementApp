@@ -102,27 +102,17 @@ public class AdminService {
 
     }
 
-    public Acknowledgement placeStudent(UpdateStatusPayload payload, Integer studentId) {
+    public Acknowledgement placeStudent(Acknowledgement payload, Integer applicationId) {
         String status = null;
         String message = null;
         Acknowledgement response = Acknowledgement.builder().build();
         try {
+            List<AppliedFor> appliedFors = appliedForRepo.findByApplicationId(applicationId);
+            AppliedFor appliedFor = appliedFors.get(0);
+            Integer studentId = appliedFor.getStudentId();
             List<Student> studentCollection = studentRepo.findByStudentId(studentId);
-            if (payload.getRecruiterName() == null || payload.getRecruiterName().trim().equals("")) {
-                message = "Recruiter name cannot be empty";
-                status = Constants.RESPONSE_STATUS.FAILED;
-                response.setMessage(message);
-                response.setStatus(status);
-                return response;
-            }
-            if (payload.getRoleName() == null || payload.getRoleName().trim().equals("")) {
-                message = "Role name cannot be empty";
-                status = Constants.RESPONSE_STATUS.FAILED;
-                response.setMessage(message);
-                response.setStatus(status);
-                return response;
-            }
             Student student = studentCollection.get(0);
+            List<Recruiter> recruiters = recruiterRepo.findByRecruiterId(appliedFor.getRecruiterId());
             if (!student.getPStatus().equals(Constants.PLACEMENT_STATUS.REGISTERED)) {
                 message = "Cannot place the student , status: " + student.getPStatus();
                 status = Constants.RESPONSE_STATUS.FAILED;
@@ -130,32 +120,24 @@ public class AdminService {
                 response.setStatus(status);
                 return response;
             }
-            List<Recruiter> recruiterCollection = recruiterRepo.findByNameAndRole(payload.getRecruiterName().trim(),
-                    payload.getRoleName().trim());
-            if (recruiterCollection != null && recruiterCollection.isEmpty()) {
-                message = "Recruiter with given role not found";
-                status = Constants.RESPONSE_STATUS.FAILED;
-                response.setMessage(message);
-                response.setStatus(status);
-                return response;
+            List<AppliedFor> list = appliedForRepo.findByStudentId(studentId);
+            for (AppliedFor appliedFor1 : list) {
+                if (appliedFor1.getApplicationId() != applicationId) {
+                    appliedFor1.setStatus(Constants.APPLICATION_STATUS.REJECTED);
+                    appliedFor1.setMessage("Placed for another role");
+                    appliedFor1 = appliedForRepo.save(appliedFor1);
+                }
             }
-            List<AppliedFor> appliedFors = appliedForRepo
-                    .findByRecruiterIdAndStudentId(recruiterCollection.get(0).getRecruiterId(), studentId);
-            if (appliedFors != null && appliedFors.isEmpty()) {
-                message = "Student have not applied for this role";
-                status = Constants.RESPONSE_STATUS.FAILED;
-                response.setMessage(message);
-                response.setStatus(status);
-                return response;
-            }
-            Recruiter recruiter = recruiterCollection.get(0);
-            List<AppliedFor> list = appliedForRepo.deleteByStudentId(studentId);
-            IsPlaced isPlaced = IsPlaced.builder().recruiterId(recruiter.getRecruiterId()).studentId(studentId).build();
+            IsPlaced isPlaced = IsPlaced.builder().recruiterId(appliedFor.getRecruiterId()).studentId(studentId)
+                    .build();
             isPlaced = isPlacedRepo.save(isPlaced);
             student.setPStatus(Constants.PLACEMENT_STATUS.PLACED);
-            student.setMessage("Congratulations ,You have been Placed at " + payload.getRecruiterName() + " as a "
-                    + payload.getRoleName());
+            student.setMessage("Congratulations ,You have been Placed at " + recruiters.get(0).getName() + " as a "
+                    + recruiters.get(0).getRole());
             student = studentRepo.save(student);
+            appliedFor.setStatus(Constants.APPLICATION_STATUS.PLACED);
+            appliedFor.setMessage("Placed");
+            appliedFor = appliedForRepo.save(appliedFor);
             message = "Student changed into placed status";
             status = Constants.RESPONSE_STATUS.SUCCESS;
             response.setMessage(message);
@@ -164,6 +146,7 @@ public class AdminService {
 
         } catch (Exception e) {
             message = "Placing student successfull";
+            e.printStackTrace();
             status = Constants.RESPONSE_STATUS.FAILED;
             response.setMessage(message);
             response.setStatus(status);
@@ -196,6 +179,40 @@ public class AdminService {
             return response;
         } catch (Exception e) {
             message = "Student status chaage failed, " + e.getMessage();
+            status = Constants.RESPONSE_STATUS.FAILED;
+            response.setMessage(message);
+            response.setStatus(status);
+            return response;
+        }
+    }
+
+    public Acknowledgement rejectApplication(Acknowledgement payload, Integer applicationId) {
+        String status = null;
+        String message = null;
+        Acknowledgement response = Acknowledgement.builder().build();
+        try {
+            List<AppliedFor> appliedFors = appliedForRepo.findByApplicationId(applicationId);
+            AppliedFor appliedFor = appliedFors.get(0);
+            if (!appliedFor.getStatus().equals(Constants.APPLICATION_STATUS.APPLIED)) {
+                message = "Application cannot be rejected , status : " + appliedFor.getStatus();
+                status = Constants.RESPONSE_STATUS.FAILED;
+                response.setMessage(message);
+                response.setStatus(status);
+                return response;
+            }
+            appliedFor.setStatus(Constants.APPLICATION_STATUS.REJECTED);
+            if (payload.getMessage() != null && !payload.getMessage().trim().equals(""))
+                appliedFor.setMessage(payload.getMessage());
+            else
+                appliedFor.setMessage("No message from Placement Officer");
+            appliedFor = appliedForRepo.save(appliedFor);
+            message = "Application rejected";
+            status = Constants.RESPONSE_STATUS.SUCCESS;
+            response.setMessage(message);
+            response.setStatus(status);
+            return response;
+        } catch (Exception e) {
+            message = "Application cannot be rejected , " + e.getMessage();
             status = Constants.RESPONSE_STATUS.FAILED;
             response.setMessage(message);
             response.setStatus(status);

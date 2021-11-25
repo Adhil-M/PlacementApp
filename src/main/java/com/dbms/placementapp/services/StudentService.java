@@ -465,7 +465,8 @@ public class StudentService {
                 return response;
             }
             AppliedFor appliedFor = AppliedFor.builder().recruiterId(recruiterId).studentId(studentId)
-                    .appliedDate(LocalDate.now()).build();
+                    .appliedDate(LocalDate.now()).status(Constants.APPLICATION_STATUS.APPLIED)
+                    .message("Application Successfull").build();
             appliedFor = appliedForRepo.save(appliedFor);
             message = "Applied Successfully";
             status = Constants.RESPONSE_STATUS.SUCCESS;

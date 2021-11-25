@@ -17,4 +17,8 @@ public interface AppliedForRepository extends JpaRepository<AppliedFor, Integer>
 
     List<AppliedFor> deleteByStudentId(Integer studentId);
 
+    List<AppliedFor> deleteByRecruiterId(Integer recruiterId);
+
+    List<AppliedFor> findByApplicationId(Integer applicationId);
+
 }

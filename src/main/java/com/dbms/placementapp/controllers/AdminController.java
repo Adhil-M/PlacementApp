@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Optional;
 
 import com.dbms.placementapp.common.Constants;
+import com.dbms.placementapp.models.AppliedFor;
+import com.dbms.placementapp.models.IsPlaced;
 import com.dbms.placementapp.models.Recruiter;
 import com.dbms.placementapp.models.Student;
 import com.dbms.placementapp.models.User;
@@ -14,6 +16,8 @@ import com.dbms.placementapp.models.responses.Acknowledgement;
 import com.dbms.placementapp.models.responses.RecruiterResponse;
 import com.dbms.placementapp.models.responses.StudentDetail;
 import com.dbms.placementapp.models.responses.StudentList;
+import com.dbms.placementapp.repositories.AppliedForRepository;
+import com.dbms.placementapp.repositories.IsPlacedRepository;
 import com.dbms.placementapp.repositories.RecruiterRepository;
 import com.dbms.placementapp.repositories.StudentRepository;
 import com.dbms.placementapp.repositories.UserCredsRepository;
@@ -25,6 +29,7 @@ import com.dbms.placementapp.services.StudentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -34,6 +39,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@Transactional
 @RequestMapping(path = "/admin")
 public class AdminController {
     @Autowired
@@ -56,6 +62,12 @@ public class AdminController {
 
     @Autowired
     UserCredsRepository userCredsRepo;
+
+    @Autowired
+    AppliedForRepository appliedForRepo;
+
+    @Autowired
+    IsPlacedRepository isPlacedRepo;
 
     @PostMapping(path = "/registerrecruiter")
     public ResponseEntity<RecruiterResponse> RegisterRecruiter(@RequestBody Recruiter payload) {
@@ -155,6 +167,9 @@ public class AdminController {
         }
         Recruiter recruiter = recruiterCollection.get(0);
         try {
+            List<AppliedFor> appliedFors = appliedForRepo.deleteByRecruiterId(recruiter.getRecruiterId());
+            List<IsPlaced> isPlaceds = isPlacedRepo.deleteByRecruiterId(recruiter.getRecruiterId());
+            // TODO
             recruiterRepo.delete(recruiter);
             message = "Recruiter with recruiterId " + recruiterId + " removed successfully";
             status = Constants.RESPONSE_STATUS.SUCCESS;
@@ -208,14 +223,11 @@ public class AdminController {
         case Constants.PLACEMENT_STATUS.REJECTED:
             response = adminService.rejectStudent(payload, studentId);
             break;
-        case Constants.PLACEMENT_STATUS.PLACED:
-            response = adminService.placeStudent(payload, studentId);
-            break;
         case Constants.PLACEMENT_STATUS.NOT_REGISTERED:
             response = adminService.revertRejection(payload, studentId);
             break;
         default:
-            message = "status vale not valid";
+            message = "status value not valid";
             status = Constants.RESPONSE_STATUS.FAILED;
             response.setMessage(message);
             response.setStatus(status);
@@ -262,6 +274,59 @@ public class AdminController {
             StudentList response = null;
             return new ResponseEntity<StudentList>(response, HttpStatus.INTERNAL_SERVER_ERROR);
         }
+    }
+
+    // todo:get applications by name,role,regno
+    @PostMapping(path = "/applicationstatus")
+    public ResponseEntity<Acknowledgement> updateApplicationStatus(@RequestParam("applicationId") Integer applicationId,
+            @RequestBody Acknowledgement payload) {
+        String message = null;
+        String status = null;
+        Acknowledgement response = Acknowledgement.builder().build();
+        if (applicationId == null) {
+            message = "applicationId cannot be empty";
+            status = Constants.RESPONSE_STATUS.FAILED;
+            response.setMessage(message);
+            response.setStatus(status);
+            return new ResponseEntity<Acknowledgement>(response, HttpStatus.BAD_REQUEST);
+        }
+        List<AppliedFor> appliedFors = appliedForRepo.findByApplicationId(applicationId);
+        if (appliedFors != null && appliedFors.isEmpty()) {
+            message = "Application Not found!";
+            status = Constants.RESPONSE_STATUS.FAILED;
+            response.setMessage(message);
+            response.setStatus(status);
+            return new ResponseEntity<Acknowledgement>(response, HttpStatus.BAD_REQUEST);
+        }
+        AppliedFor appliedFor = appliedFors.get(0);
+        String newStatus = payload.getStatus();
+        if (newStatus == null || newStatus.trim().equals("")) {
+            message = "status cannot be empty";
+            status = Constants.RESPONSE_STATUS.FAILED;
+            response.setMessage(message);
+            response.setStatus(status);
+            return new ResponseEntity<Acknowledgement>(response, HttpStatus.BAD_REQUEST);
+        }
+        newStatus.toLowerCase();
+        switch (newStatus) {
+        case Constants.APPLICATION_STATUS.REJECTED:
+            response = adminService.rejectApplication(payload, applicationId);
+            break;
+        case Constants.APPLICATION_STATUS.PLACED:
+            response = adminService.placeStudent(payload, applicationId);
+            break;
+
+        default:
+            message = "status value not valid";
+            status = Constants.RESPONSE_STATUS.FAILED;
+            response.setMessage(message);
+            response.setStatus(status);
+            return new ResponseEntity<Acknowledgement>(response, HttpStatus.BAD_REQUEST);
+        }
+        if (response.getStatus().equals(Constants.RESPONSE_STATUS.FAILED)) {
+            return new ResponseEntity<Acknowledgement>(response, HttpStatus.BAD_REQUEST);
+        }
+        return new ResponseEntity<Acknowledgement>(response, HttpStatus.OK);
     }
 
 }

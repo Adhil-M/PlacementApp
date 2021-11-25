@@ -16,4 +16,11 @@ public final class Constants {
 
     }
 
+    public static interface APPLICATION_STATUS {
+        public final String APPLIED = "applied";
+        public final String REJECTED = "rejected";
+        public final String PLACED = "placed";
+
+    }
+
 }

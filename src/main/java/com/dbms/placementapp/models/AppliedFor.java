@@ -21,14 +21,19 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Entity
 @Table(name = "appliedfor")
-@IdClass(AppliedForId.class)
+// @IdClass(AppliedForId.class)
 public class AppliedFor {
+
     @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "applicationid")
+    private Integer applicationId;
     @Column(name = "student_id")
     private Integer studentId;
-    @Id
     @Column(name = "recruiter_id")
     private Integer recruiterId;
     @Column(name = "applieddate")
     private LocalDate appliedDate;
+    private String status;
+    private String message;
 }
