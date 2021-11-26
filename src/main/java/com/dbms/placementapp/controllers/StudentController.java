@@ -26,8 +26,6 @@ import com.dbms.placementapp.repositories.UserCredsRepository;
 import com.dbms.placementapp.repositories.UserRepository;
 import com.dbms.placementapp.services.StudentService;
 
-import org.checkerframework.checker.nullness.qual.Nullable;
-import org.checkerframework.checker.units.qual.A;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
