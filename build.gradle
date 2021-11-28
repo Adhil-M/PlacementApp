@@ -1,15 +1,27 @@
+buildscript {
+	ext {
+		springBootVersion = '2.5.6.RELEASE'
+	}
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+    }
+}
+
+bootJar {
+	manifest {
+		attributes 'Start-Class': 'com.roytuts.spring.internationalization.SpringInternationalizationApp'
+	}
+}
+
 plugins {
 	id 'org.springframework.boot' version '2.5.6'
 	id 'io.spring.dependency-management' version '1.0.11.RELEASE'
 	id 'java'
 }
-jar {
-    manifest {
-        attributes(
-                'Main-Class': 'com.dbms.placementapp.PlacementappApplication'
-        )
-    }
-}
+
 
 group = 'com.dbms'
 version = '0.0.1-SNAPSHOT'
